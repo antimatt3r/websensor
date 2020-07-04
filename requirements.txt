@@ -1,0 +1,7 @@
+beautifulsoup4==4.9.1
+bs4==0.0.1
+pytesseract==0.3.4
+opencv-python==4.2.0.34
+retry==0.9.2
+texttable==1.6.2
+jsonpath-ng==1.5.1
