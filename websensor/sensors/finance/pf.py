@@ -88,7 +88,6 @@ def main(args) -> dict:
     logger.info("Getting the passbook page ..")
     sensor.get(URLS['passbook'])
     if not sensor.soup.find('input', {'id': 'logout'}):
-        logger.debug(sensor.soup)
         raise LoginError(f"Login did not work for username {data['username']}")
 
     h3 = sensor.soup.find('h3').text

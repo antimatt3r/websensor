@@ -2,6 +2,7 @@ import base64
 import logging
 import os
 import pprint
+import json
 import re
 from os.path import dirname, abspath, isdir
 
@@ -34,7 +35,7 @@ class LoginError(Exception):
 
 
 class BaseSensor(object):
-    def __init__(self, name, base_url, parser='html.parser', headers=None):
+    def __init__(self, name, base_url, parser='html.parser', headers=None, creds=True):
         self.name = name
         self.base_url = base_url.rstrip('/')
         self.session = requests.Session()
@@ -46,17 +47,36 @@ class BaseSensor(object):
         self.captcha_image = os.environ['HOME'] + '/tmp/pfimg.jpg'
 
         self.config = Config()
-        jsonpath_expr = parse(self.name.replace('/', '.'))
-        try:
-            self.credentials = [
-                x.value
-                for x in jsonpath_expr.find(self.config.secrets)
-            ][0]
-        except:
-            raise NoCredsError(f"No credentials defined for {self.name}")
+        self.inputs = self.read_from_config('inputs', raise_=False)
+        self.credentials = self.read_from_config('secrets', raise_=creds)
+
+    def read_from_config(self, type_, raise_=True):
+        data = self.config.config[type_]
+        if isinstance(data, str):
+            with open(data) as jfd:
+                data = json.load(jfd)
+        path = []
+        for component in self.name.split('/'):
+            path.append(component)
+            if component in data:
+                data = data[component]
+            else:
+                if raise_:
+                    raise Exception(f"No section {'/'.join(path)} in {self.config}")
+                else:
+                    return None
+        return data
 
     def encode_password(self, password):
         pass
+
+    def request(self, method, url, **kwargs):
+        if not url.startswith('http'):
+            url = f'{self.base_url}/{url.lstrip("/")}'
+        self.response = self.session.get(url, **kwargs)
+        self.soup = BeautifulSoup(self.response.text, self.parser)
+        self.response.raise_for_status()
+        return self.reponse
 
     def get(self, url, **kwargs):
         if not url.startswith('http'):
@@ -66,9 +86,12 @@ class BaseSensor(object):
         self.response.raise_for_status()
 
     def post(self, url, **kwargs):
+#        return self.request('post', url, **kwargs)
         if not url.startswith('http'):
             url = f'{self.base_url}/{url.lstrip("/")}'
+        logger.debug(f"POSTing to {url} with data: {kwargs['data']} ..")
         self.response = self.session.post(url, **kwargs)
+        logger.debug("Creating soup ..")
         self.soup = BeautifulSoup(self.response.text, self.parser)
         self.response.raise_for_status()
 
