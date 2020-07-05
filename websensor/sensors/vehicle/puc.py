@@ -120,7 +120,7 @@ def main(args) -> dict:
 def short(args) -> None:
     table = Texttable()
     output = main(args)
-    header = ["Vehicle Regn", "Make/Model", "Expiry"]
+    header = ["Vehicle Regn", "Make/Model", "Expiry of PUC"]
     table.header(header)
     for vehicle, details in output.items():
         row = [vehicle.upper()]
