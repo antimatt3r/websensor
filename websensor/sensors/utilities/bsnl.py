@@ -5,7 +5,6 @@ import pprint
 
 import logging
 from texttable import Texttable
-import urllib.parse
 
 from sensors.basesensor import BaseSensor
 
@@ -59,15 +58,12 @@ def short(args) -> None:
     output = main(args)
     header = ["BSNL Number", "Name", "Status", "Due in (days)", "Amount Due", "Due Date"]
     table.set_cols_dtype(['t' for x in header])
-    status_map = {
-        'SUCCESS': 'Bill Paid'
-    }
+    status_map = { "SUCCESS": "PAID" }
     table.header(header)
     for row in output:
         name = row["CUSTOMER_NAME"].replace(".", " ").strip()
         table.add_row(
-            [str(row["PHONE_NO"]), name,
-             row["STATUS"], row["DUE_IN_DAYS"], row["TOTAL_AMOUNT"], row["DUE_DATE"]]
+            [str(row["PHONE_NO"]), name, status_map.get(row["STATUS"], "NOT PAID"),
+             row["DUE_IN_DAYS"], row["TOTAL_AMOUNT"], row["DUE_DATE"]]
         )
     print(table.draw())
-#    out = main(args)
