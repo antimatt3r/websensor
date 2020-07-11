@@ -89,7 +89,7 @@ class BaseSensor(object):
 #        return self.request('post', url, **kwargs)
         if not url.startswith('http'):
             url = f'{self.base_url}/{url.lstrip("/")}'
-        logger.debug(f"POSTing to {url} with data: {kwargs['data']} ..")
+        logger.debug(f"POSTing to {url} with data: {kwargs} ..")
         self.response = self.session.post(url, **kwargs)
         logger.debug("Creating soup ..")
         self.soup = BeautifulSoup(self.response.text, self.parser)
