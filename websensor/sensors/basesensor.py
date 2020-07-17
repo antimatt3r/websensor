@@ -48,6 +48,10 @@ class BaseSensor(object):
         self.tmpdir = self.config.config['tmpdir']
         self.inputs = self.read_from_config('inputs', raise_=False)
         self.credentials = self.read_from_config('secrets', raise_=creds)
+        self.tmpdir = self.config.config.get('tmpdir', os.environ['TMPDIR'])
+
+        self.captcha_image = join(self.tmpdir,
+                                  f"{self.name.split('/')[-1]}.jpg")
 
         self.captcha_image = f'{self.tmpdir}/{basename(self.name)}.jpg'
 
@@ -116,8 +120,10 @@ class BaseSensor(object):
     def solve_captcha(self, url):
         self.download_captcha(url)
 
-        custom_config = r'--oem 3 --psm 6'
-        captcha = pytesseract.image_to_string(Image.open(self.captcha_image), config=custom_config)
+        custom_config = r'--oem 3 --psm 6 -c ' \
+                        r'tessedit_char_whitelist=0123456789+=-'
+        captcha = pytesseract.image_to_string(Image.open(self.captcha_image),
+                                              config=custom_config)
         logger.debug(f"Found Captcha: {captcha}")
         result = self.process_captcha(captcha)
         return result
