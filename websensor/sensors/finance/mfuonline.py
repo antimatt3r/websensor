@@ -71,12 +71,12 @@ def main(args) -> dict:
     }
 
     logger.info("Logging in now ..")
-#    sensor.get(URLS['base'])
-#    sensor.post(URLS['login'], data=login_data)
+    sensor.get(URLS['base'])
+    sensor.post(URLS['login'], data=login_data)
 #    sensor.dump_html('login.html')
-#    sensor.post(URLS['investment'], data=investment_data)
+    sensor.post(URLS['investment'], data=investment_data)
 #    sensor.dump_html('investment.html')
-    sensor.read_html('investment.html')
+#    sensor.read_html('investment.html')
 
     categorydata = sensor.soup.find('div', id='catHoldDash')
     funds = categorydata.find_all('li', {'class': 'list-group-item pleft5'})
