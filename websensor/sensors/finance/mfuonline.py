@@ -30,20 +30,14 @@ class MfuOnlineSensor(BaseSensor):
 curl 'https://www.mfuonline.com/MfUtilityLogin.do'
 -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:78.0) Gecko/20100101 Firefox/78.0'
 -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
--H 'Accept-Language: en-US,en;q=0.5'
 --compressed
 -H 'Content-Type: application/x-www-form-urlencoded'
--H 'Origin: https://www.mfuonline.com'
--H 'Connection: keep-alive'
--H 'Referer: https://www.mfuonline.com/'
 -H 'Cookie: JSESSIONID=B166C096B547CEB774390D427BF84B9D'
--H 'Upgrade-Insecure-Requests: 1'
 --data-raw 'localeID=&loginid=USER&password=PASS&lang1=success'
 
 curl 'https://www.mfuonline.com/InvHoldingDetailsAction.do?'--compressed
 -H 'Cookie: JSESSIONID=7765B68906D4EFD1D0695B6D6CCBA362'
 --data-raw 'canID=CANID&respType=detail&verType=ver2&zeroHoldingFlag=Y&holdingforAllFlag=N&canHolderType=F&accCategory=I'
-
 '''
 
 def main(args) -> dict:
@@ -127,7 +121,7 @@ def short(args) -> None:
     nav_date = list(output.values())[0]['nav_date']
     header = [f"MF as on {nav_date}", "Folio", "Nav", "Units", "Value"]
     table.header(header)
-    table.set_cols_dtype(['t', 't', 't', 't', 't'])
+    table.set_cols_dtype(['t' for x in columns])
     for mf in sorted(output):
         row = [output[mf][x] for x in columns]
         table.add_row(row)
