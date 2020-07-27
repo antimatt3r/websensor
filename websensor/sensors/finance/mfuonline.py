@@ -1,16 +1,12 @@
 """ Implement the vehicle command.
 
 """
-import hashlib
 import pprint
 import re
-from bs4 import BeautifulSoup
-import base64
 import logging
-import json
 from texttable import Texttable
 
-from sensors.basesensor import BaseSensor, CaptchaError, LoginError
+from sensors.basesensor import BaseSensor
 
 logger = logging.getLogger(__name__)
 

@@ -1,20 +1,13 @@
 """ Implement the vehicle command.
 
 """
-import hashlib
 import pprint
 import re
 
-import requests
-from bs4 import BeautifulSoup
-import base64
 import logging
-import json
 from texttable import Texttable
-import dateparser
-from dateutil.parser import parse
 
-from sensors.basesensor import BaseSensor, CaptchaError, LoginError
+from sensors.basesensor import BaseSensor
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +43,13 @@ def main(args) -> dict:
     }
 
     sensor.post(URLS['login'], data=data)
-    
+
     def _get_subscription(soup):
         subscription_data = soup.find('span', {'class': 'counter'}).text.replace('\n', '')
         return {
             'Days Left': int(re.sub(r'(\d+).*', r'\1', subscription_data))
         }
-        
+
     def _get_fup(soup):
         group_items = soup.find_all('li', {'class': 'list-group-item'})
         fup = {}
@@ -65,7 +58,7 @@ def main(args) -> dict:
             key = f'{gi.text.strip()} ({value.split(" ")[1]})'
             fup[key] = float(value.split(" ")[0])
         return fup
-    
+
     def get_data(soup):
         wbs = soup.find_all('div', {'class': 'white-box'})
         data = {}

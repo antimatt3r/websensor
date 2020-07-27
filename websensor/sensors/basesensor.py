@@ -1,10 +1,9 @@
 import base64
 import logging
-import os
 import pprint
 import json
 import re
-from os.path import dirname, abspath, isdir, join
+from os.path import basename, join
 
 import requests
 from bs4 import BeautifulSoup
@@ -12,7 +11,6 @@ from pytesseract import pytesseract
 from retry import retry
 
 from utils.config import Config
-from jsonpath_ng import parse
 
 try:
     from PIL import Image
@@ -25,6 +23,7 @@ PP = pprint.PrettyPrinter(indent=4).pprint
 
 class NoCredsError(Exception):
     pass
+
 
 class CaptchaError(Exception):
     pass
@@ -50,7 +49,7 @@ class BaseSensor(object):
         self.inputs = self.read_from_config('inputs', raise_=False)
         self.credentials = self.read_from_config('secrets', raise_=creds)
 
-        self.captcha_image = f'{self.tmpdir}/{self.name}.jpg'
+        self.captcha_image = f'{self.tmpdir}/{basename(self.name)}.jpg'
 
     def read_from_config(self, type_, raise_=True):
         data = self.config.config[type_]
