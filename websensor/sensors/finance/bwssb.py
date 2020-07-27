@@ -137,6 +137,8 @@ def main(args) -> dict:
         'Content-Type': 'application/x-www-form-urlencoded',
         'Referer': 'https://cra-nsdl.com/CRA/',
     }
+    drop_to_shell(dict(globals(), **locals()))
+    sdfj
     sensor = NpsSensor('finance/nps', URLS['base'], headers=headers,
                        creds=True)
 
@@ -148,7 +150,7 @@ def main(args) -> dict:
             raise CaptchaError
         return captcha
 
-    @retry(CaptchaError, tries=3, delay=5)
+    @retry(CaptchaError, tries=3)
     def login():
         captcha = solve_captcha()
         logger.info(f"Captcha = {captcha}")
@@ -163,6 +165,8 @@ def main(args) -> dict:
         if sensor.soup.find('div', {'class': 'login-tab'}):
             sensor.dump_html('login-error.html')
     #        if 'Please enter correct captcha code' in sensor.response.text:
+            logger.critical("Trying again ..")
+            sleep(5)
             raise CaptchaError("Captcha was not validated")
         else:
             print("*****************")
