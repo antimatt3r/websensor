@@ -44,11 +44,13 @@ class BaseSensor(object):
         self.response = None
         self.soup = None
         self.parser = parser
-        self.captcha_image = os.environ['HOME'] + '/tmp/pfimg.jpg'
 
         self.config = Config()
+        self.tmpdir = self.config.config['tmpdir']
         self.inputs = self.read_from_config('inputs', raise_=False)
         self.credentials = self.read_from_config('secrets', raise_=creds)
+
+        self.captcha_image = f'{self.tmpdir}/{self.name}.jpg'
 
     def read_from_config(self, type_, raise_=True):
         data = self.config.config[type_]

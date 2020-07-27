@@ -18,7 +18,10 @@ WORKDIR /app
 RUN pip3 install -r requirements.txt
 
 
-VOLUME ["/config/websensor.rc", "/config/websensor.secrets"]
+# VOLUME ["/config/websensor.rc", "/config/websensor.secrets"]
+
+ENV WEBSENSORRC /config/websensor.rc
+RUN mkdir /tmp/websensor
 
 ENTRYPOINT ["python3", "/app/cli.py"]
 CMD ["--help"]

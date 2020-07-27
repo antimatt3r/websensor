@@ -13,7 +13,7 @@ def get_config():
             config = json.load(rcfd)
         return config
     except IOError:
-        print("ioerror")
+        raise Exception(f"Cannot read rc file: {websensorrc}")
 
 
 def get_secrets(config):
@@ -39,7 +39,7 @@ class Config(object):
         elif dir_:
             raise Exception(f"Invalid tempdir provided in config: {dir_}")
         else:
-            logger.debug(f"Created temporary directory {tempdir}")
+            logger.debug(f"Created temporary directory {dir_}")
             tempdir = tempfile.mkdtemp()
             self.tmpdir_created = True
             return tempdir
