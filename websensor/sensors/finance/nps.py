@@ -5,6 +5,7 @@ import hashlib
 import os
 import pprint
 import re
+from time import sleep
 
 from PIL import Image, ImageEnhance, ImageFilter
 from bs4 import BeautifulSoup
@@ -71,11 +72,15 @@ class NpsSensor(BaseSensor):
         return result
 
     def get_id(self):
-        PP(self.response.text)
+        if "Please enter correct captcha code" in self.response.text:
+            haha
         lines = self.response.text.split('\n')
         PP([x for x in lines if 'var totalurl=' in x])
-        urlline = [x for x in lines if 'var totalurl=' in x][0]
-        match = re.match(r'.*\?ID=([^\&]+)&.*', r'\1', urlline)
+        print(len(lines))
+        urllines = [x for x in lines if 'var totalurl=' in x]
+        print(urllines)
+        urlline = urllines[0]
+        match = re.match(r'.*\?ID=([\d-]+).*', urlline)
         if not match:
             raise Exception("Cannot get ID")
         return match.groups()[0]
@@ -107,6 +112,19 @@ curl 'https://cra-nsdl.com/CRA/Log-Off.do?ID=-1282619975&getName=Log-Off' \
   --compressed
 '''
 
+def drop_to_shell(vars):
+    import code
+    try:
+        import readline
+        import rlcompleter
+        historyPath = os.path.expanduser("~/.pyhistory")
+        if os.path.exists(historyPath):
+                readline.read_history_file(historyPath)
+        readline.parse_and_bind('tab: complete')
+    except:
+        pass
+    code.interact(vars)
+
 def main(args) -> dict:
     """ Execute the command.
 
@@ -122,7 +140,7 @@ def main(args) -> dict:
     sensor = NpsSensor('finance/nps', URLS['base'], headers=headers,
                        creds=True)
 
-    @retry(CaptchaError, tries=3)
+    @retry(CaptchaError, tries=1)
     def solve_captcha():
         captcha = sensor.solve_captcha(URLS['login'])
         if captcha > 100:
@@ -166,8 +184,6 @@ def main(args) -> dict:
     # Lets get the required data
     logger.info("Getting the passbook page ..")
     sensor.get(URLS['passbook'])
-    if not sensor.soup.find('input', {'id': 'logout'}):
-        raise LoginError(f"Login did not work for username {data['username']}")
 
     h3 = sensor.soup.find('h3').text
     match = re.match(r'\s*Welcome\s*:\s*(.*)\s*\[\s*(\d+)\s*\]', h3)

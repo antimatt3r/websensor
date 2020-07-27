@@ -48,10 +48,10 @@ class BaseSensor(object):
         self.tmpdir = self.config.config['tmpdir']
         self.inputs = self.read_from_config('inputs', raise_=False)
         self.credentials = self.read_from_config('secrets', raise_=creds)
-        self.tmpdir = self.config.config.get('tmpdir', os.environ['TMPDIR'])
+        self.tmpdir = self.config.tmpdir
 
         self.captcha_image = join(self.tmpdir,
-                                  f"{self.name.split('/')[-1]}.jpg")
+                                  f"{self.name.split('/')[-1]}-captcha.jpg")
 
         self.captcha_image = f'{self.tmpdir}/{basename(self.name)}.jpg'
 
