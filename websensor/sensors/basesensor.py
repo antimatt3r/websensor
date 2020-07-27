@@ -4,7 +4,7 @@ import os
 import pprint
 import json
 import re
-from os.path import dirname, abspath, isdir
+from os.path import dirname, abspath, isdir, join
 
 import requests
 from bs4 import BeautifulSoup
@@ -121,4 +121,17 @@ class BaseSensor(object):
         result = self.process_captcha(captcha)
         return result
 
+    def dump_html(self, filename):
+        if not filename.startswith('/'):
+            filename = join(self.tmpdir, filename)
+        with open(filename, 'w') as hfd:
+            logger.debug("Writing %s", filename)
+            hfd.write(self.response.text)
 
+    def read_html(self, filename):
+        if not filename.startswith('/'):
+            filename = join(self.tmpdir, filename)
+        with open(filename) as hfd:
+            logger.debug("Reading %s", filename)
+            html = hfd.read()
+        self.soup = BeautifulSoup(html, self.parser)
