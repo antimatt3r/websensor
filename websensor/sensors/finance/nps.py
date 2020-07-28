@@ -19,6 +19,7 @@ from texttable import Texttable
 
 import sensors
 from sensors.basesensor import BaseSensor, CaptchaError, LoginError
+from utils.utils import clean_text, list_of_lists_to_dict
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +30,6 @@ URLS = {
     'captcha': '/CRA/',
     'login': '/CRA/LogonPwd.do',
     'logoff': '/CRA/'
-}
-TEXT_MAPPING = {
-    'TOTAL EE BALANCE': 'Employee',
-    'TOTAL ER BALANCE': 'Employer',
-    'TOTAL BALANCE (as on date)': 'Total',
 }
 
 
@@ -168,67 +164,75 @@ def main(args) -> dict:
             print("*****************")
 
     logger.info("Logging in now ..")
-    login()
-    sensor.dump_html('login-success.html')
-#    if not sensor.soup.find('input', {'id': 'logout'}):
-#        logger.critical("Writing html")
-#        raise LoginError(f"Login did not work")
-    PP("DONE")
-    id = sensor.get_id()
-    url = f"/CRA/SOTAccountDetails.do?ID={id}&getName=SOT%20Account%20Details"
-    sensor.get(url)
-    sensor.dump_html('account.html')
-    done
+#    login()
+#    sensor.dump_html('login-success.html')
+##    if not sensor.soup.find('input', {'id': 'logout'}):
+##        logger.critical("Writing html")
+##        raise LoginError(f"Login did not work")
+#    id = sensor.get_id()
+#    url = f"/CRA/SOTAccountDetails.do?ID={id}&getName=SOT%20Account%20Details"
+#    sensor.get(url)
+#    sensor.dump_html('account.html')
+    sensor.read_html('account.html')
 
+    def parse_table(soup):
+        table = {}
+        name = clean_text(soup.find('tbody').find('tr').text)
+        table[name] = []
+        if 'No Record Found' in soup.text:
+            return {}
+        headers = [
+            clean_text(x.text)
+            for x in soup.find('tbody').find_all('tr')[1].find_all('td')
+        ]
+        table[name].append(headers)
+        for row in soup.find_all('tbody')[1].find_all('tr'):
+            if 'Total' in row.text:
+                # Lets skip the row which gives the total
+                continue
+            values = [clean_text(x.text) for x in row.find_all('td')]
+            if len(values) < len(headers):
+                # HACK: Assuming that if less columns than expected, left
+                # side cells are merged
+                values.insert(0, table[name][1][0])
+            table[name].append(values)
+        return table
 
-    # Lets get the required data
-    logger.info("Getting the passbook page ..")
-    sensor.get(URLS['passbook'])
+    rawdata = {}
+    for t in sensor.soup.find_all('table', {'class': 'table-newnorow'}):
+        table_data = parse_table(t)
+        rawdata.update(table_data)
 
-    h3 = sensor.soup.find('h3').text
-    match = re.match(r'\s*Welcome\s*:\s*(.*)\s*\[\s*(\d+)\s*\]', h3)
-    output['name'] = match.groups()[0]
-    output['uan'] = match.groups()[1]
+    prefs = list_of_lists_to_dict(rawdata['Current Scheme Preference'],
+                                  "Scheme Details")
+    summary = list_of_lists_to_dict(
+        rawdata['Account Summary For Current Schemes'], "Scheme Name")
 
-    logger.debug("Fetching MIDs ..")
-    mids = sensor.soup.find(id="selectmid")
-    accounts = {}
-    for option in mids.find_all('option'):
-        if option.attrs['value'] != '0':
-            if 'value' in option.attrs:
-                accounts[option.text] = option.attrs['value']
-
-    pb_url_line = [x for x in sensor.response.text.split('\n') if '/get-member-passbook' in x][0]
-    pb_url = re.sub(r".*'(/passbook/ajax/.*/get-member-passbook).*", r'\1', pb_url_line)
-
-    output['balance'] = {}
-    for account, mid in accounts.items():
-        output['balance'][account] = {}
-        data = {
-            'midToken': mid,
-            'mid': account,
-            'tbl': 'tbl_' + account,
-        }
-        url = f'/MemberPassBook/{pb_url}'
-        sensor.post(url, data=data)
-        soup = BeautifulSoup(json.loads(sensor.response.text)[0]['html'], 'html.parser')
-        table = soup.find('table', {'class': 'table table-bordered'})
-        for row in table.find_all('tr'):
-            type_, balance = [x.text for x in row.find_all("td")]
-            # Lets remap the keys
-            output['balance'][account][TEXT_MAPPING[type_]] = re.sub(r'[^\d]', r'', balance)
+    date = clean_text(sensor.soup.find(id='stddate').span.text)
+    pran = clean_text(sensor.soup.find(id='pranno').text)
+    for scheme, scheme_data in summary.items():
+        scheme_data['Percentage'] = prefs[scheme]['Percentage']
+        scheme_data['Date'] = date
+        scheme_data['PRAN Number'] = pran
+        output[scheme] = scheme_data
 
     return output
+
 
 def short(args) -> None:
     table = Texttable()
     output = main(args)
-    header = ["PF Account", "Employee", "Employer", "Total"]
+    pran = list(output.values())[0]['PRAN Number']
+    date = list(output.values())[0]['Date']
+    header = [f"NPS {pran} ({date})", "Percentage", "Units", "NAV", "Value"]
     table.header(header)
-    for account, values in output['balance'].items():
-        row = [account]
-        for type_ in header[1:]:
-            row.append(values[type_])
+    table.set_max_width(0)
+    for scheme, scheme_data in output.items():
+        row = [scheme,
+               scheme_data['Percentage'],
+               scheme_data['Total Units'].replace(',', ''),
+               scheme_data['NAV (Rs.)'].replace(',', ''),
+               scheme_data['Amount (Rs.)'].replace(',', '')]
         table.add_row(row)
     print(table.draw())
 #    out = main(args)
