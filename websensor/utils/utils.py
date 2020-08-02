@@ -2,6 +2,11 @@ import os
 import re
 from collections import OrderedDict
 
+import requests
+import logging
+
+logger = logging.getLogger()
+
 
 def drop_to_shell():
     import code
@@ -29,3 +34,16 @@ def list_of_lists_to_dict(data, key):
     for row in data:
         dict_.update({row[index_key]: dict(zip(headers, row))})
     return dict_
+
+def convert_currency(amount, from_, to, date='latest'):
+    rates = requests.get(f'https://api.exchangeratesapi.io/{date}').json()
+    if from_ == to:
+        out = amount
+    elif from_ == rates['base']:
+        out = amount * rates['rates'][to]
+    elif to == rates['base']:
+        out = amount / rates['rates'][from_]
+    else:
+        out = amount * rates['rates'][to] / rates['rates'][from_]
+    logger.info(f"{amount} {from_} = {out} {to}")
+    return out
