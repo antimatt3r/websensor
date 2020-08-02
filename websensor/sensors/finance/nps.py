@@ -29,13 +29,14 @@ URLS = {
     'base': 'https://cra-nsdl.com/',
     'captcha': '/CRA/',
     'login': '/CRA/LogonPwd.do',
-    'logoff': '/CRA/'
+    'logoff': '/CRA/Log-Off.do?ID={id}&getName=Log-Off',
+    'account_details': "/CRA/SOTAccountDetails.do?ID={id}&getName=SOT%20"
+                       "Account%20Details",
 }
 
 
 class NpsSensor(BaseSensor):
     def download_captcha(self, url):
-        self.captcha_image = os.environ['HOME'] + '/tmp/nps.jpg'
         logger.info(f"Downloading captcha to {self.captcha_image}")
         self.get(url)
         image = self.soup.find(id='captcha').img['src'].split('base64,')[1]
@@ -51,17 +52,18 @@ class NpsSensor(BaseSensor):
             raise CaptchaError(f"Unable to solve captcha: {captcha}")
         result = eval(captcha)
         logger.debug(f"Solved captcha = {result}")
+        if result > 100:
+            logger.info(f"Suspecting the solved captcha ({captcha})")
+            raise CaptchaError("Suspecting the solved captcha %s", captcha)
         return result
 
-    @retry(CaptchaError, tries=3)
-    def solve_captcha(self, url):
-        self.download_captcha(url)
-
+    def solve_captcha(self):
         custom_config = r'--oem 3 --psm 6 -c ' \
-                        r'tessedit_char_whitelist=0123456789+-='
+                        r'tessedit_char_whitelist="0123456789+-="'
         image = Image.open(self.captcha_image).convert('L')
         image = image.filter(ImageFilter.MedianFilter())
         image = image.point(lambda x: 0 if x < 140 else 255)
+        image.save(self.captcha_image.replace('.jpg', '-edited.jpg'))
         captcha = pytesseract.image_to_string(image, config=custom_config)
         logger.debug(f"Found Captcha: {captcha}")
         result = self.process_captcha(captcha)
@@ -69,57 +71,15 @@ class NpsSensor(BaseSensor):
 
     def get_id(self):
         if "Please enter correct captcha code" in self.response.text:
-            haha
+            raise LoginError("Cannot fetch ID, captcha does not seem ok")
         lines = self.response.text.split('\n')
-        PP([x for x in lines if 'var totalurl=' in x])
-        print(len(lines))
         urllines = [x for x in lines if 'var totalurl=' in x]
-        print(urllines)
         urlline = urllines[0]
         match = re.match(r'.*\?ID=([\d-]+).*', urlline)
         if not match:
             raise Exception("Cannot get ID")
         return match.groups()[0]
 
-
-'''
-curl 'https://cra-nsdl.com/CRA/LogonPwd.do;jsessionid=DB1D999CFF9FE59E0670338DEA4E4728.Ghi456' \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -H 'Cookie: JSESSIONID=DB1D999CFF9FE59E0670338DEA4E4728.Ghi456; cra-nsdl_cookie=2718091530.47873.0000' \
-  --data-raw 'userID=XX&password=YY&subCaptchaVal=43' \
-  --compressed
-'''
-
-'''
-curl 'https://cra-nsdl.com/CRA/SOTViewOnload.do?ID=1575258027&getName=SOT%20CG-SG%20Transaction%20Details' \
-  -H 'Cookie: JSESSIONID=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; RandomNumber=223674552; sessionid=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; cra-nsdl_cookie=906152202.47873.0000' \
-  --compressed
-'''
-
-'''
-curl 'https://cra-nsdl.com/CRA/SOTViewDtls.do?ID=-1282619975&getName=SOT%20CG-SG%20Transaction%20Details' \
-  -H 'Cookie: JSESSIONID=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; sessionid=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; RandomNumber=-1893656046; cra-nsdl_cookie=906152202.47873.0000' \
-  --compressed
-'''
-
-'''
-curl 'https://cra-nsdl.com/CRA/Log-Off.do?ID=-1282619975&getName=Log-Off' \
-  -H 'Cookie: JSESSIONID=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; sessionid=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; RandomNumber=-1893656046; cra-nsdl_cookie=906152202.47873.0000' \
-  --compressed
-'''
-
-def drop_to_shell(vars):
-    import code
-    try:
-        import readline
-        import rlcompleter
-        historyPath = os.path.expanduser("~/.pyhistory")
-        if os.path.exists(historyPath):
-                readline.read_history_file(historyPath)
-        readline.parse_and_bind('tab: complete')
-    except:
-        pass
-    code.interact(vars)
 
 def main(args) -> dict:
     """ Execute the command.
@@ -136,17 +96,10 @@ def main(args) -> dict:
     sensor = NpsSensor('finance/nps', URLS['base'], headers=headers,
                        creds=True)
 
-    @retry(CaptchaError, tries=1)
-    def solve_captcha():
-        captcha = sensor.solve_captcha(URLS['login'])
-        if captcha > 100:
-            logger.info(f"Suspecting the solved captcha ({captcha})")
-            raise CaptchaError
-        return captcha
-
-    @retry(CaptchaError, tries=3, delay=5)
+    @retry(CaptchaError, tries=5, delay=5)
     def login():
-        captcha = solve_captcha()
+        sensor.download_captcha(URLS['login'])
+        captcha = sensor.solve_captcha()
         logger.info(f"Captcha = {captcha}")
         login_url = URLS['login'] + ';' + sensor.session.cookies['JSESSIONID']
         data = {
@@ -160,20 +113,17 @@ def main(args) -> dict:
             sensor.dump_html('login-error.html')
     #        if 'Please enter correct captcha code' in sensor.response.text:
             raise CaptchaError("Captcha was not validated")
-        else:
-            print("*****************")
 
     logger.info("Logging in now ..")
-#    login()
-#    sensor.dump_html('login-success.html')
-##    if not sensor.soup.find('input', {'id': 'logout'}):
-##        logger.critical("Writing html")
-##        raise LoginError(f"Login did not work")
-#    id = sensor.get_id()
-#    url = f"/CRA/SOTAccountDetails.do?ID={id}&getName=SOT%20Account%20Details"
-#    sensor.get(url)
+    login()
+    if not "Welcome Subscriber" in sensor.soup.text:
+ #       sensor.dump_html("login-error.html")
+        raise LoginError(f"Login did not work")
+ #   sensor.dump_html('login-success.html')
+    id = sensor.get_id()
+    sensor.get(URLS['account_details'].format(id=id))
 #    sensor.dump_html('account.html')
-    sensor.read_html('account.html')
+#    sensor.read_html('account.html')
 
     def parse_table(soup):
         table = {}
@@ -216,6 +166,8 @@ def main(args) -> dict:
         scheme_data['PRAN Number'] = pran
         output[scheme] = scheme_data
 
+    logger.info("Logging off ..")
+    sensor.get(URLS['logoff'].format(id=sensor.get_id()))
     return output
 
 
@@ -226,6 +178,7 @@ def short(args) -> None:
     date = list(output.values())[0]['Date']
     header = [f"NPS {pran} ({date})", "Percentage", "Units", "NAV", "Value"]
     table.header(header)
+    table.set_cols_dtype(['t', 't', 't', 't', 't'])
     table.set_max_width(0)
     for scheme, scheme_data in output.items():
         row = [scheme,
@@ -236,3 +189,29 @@ def short(args) -> None:
         table.add_row(row)
     print(table.draw())
 #    out = main(args)
+
+'''
+curl 'https://cra-nsdl.com/CRA/LogonPwd.do;jsessionid=DB1D999CFF9FE59E0670338DEA4E4728.Ghi456' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -H 'Cookie: JSESSIONID=DB1D999CFF9FE59E0670338DEA4E4728.Ghi456; cra-nsdl_cookie=2718091530.47873.0000' \
+  --data-raw 'userID=XX&password=YY&subCaptchaVal=43' \
+  --compressed
+'''
+
+'''
+curl 'https://cra-nsdl.com/CRA/SOTViewOnload.do?ID=1575258027&getName=SOT%20CG-SG%20Transaction%20Details' \
+  -H 'Cookie: JSESSIONID=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; RandomNumber=223674552; sessionid=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; cra-nsdl_cookie=906152202.47873.0000' \
+  --compressed
+'''
+
+'''
+curl 'https://cra-nsdl.com/CRA/SOTViewDtls.do?ID=-1282619975&getName=SOT%20CG-SG%20Transaction%20Details' \
+  -H 'Cookie: JSESSIONID=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; sessionid=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; RandomNumber=-1893656046; cra-nsdl_cookie=906152202.47873.0000' \
+  --compressed
+'''
+
+'''
+curl 'https://cra-nsdl.com/CRA/Log-Off.do?ID=-1282619975&getName=Log-Off' \
+  -H 'Cookie: JSESSIONID=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; sessionid=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; RandomNumber=-1893656046; cra-nsdl_cookie=906152202.47873.0000' \
+  --compressed
+'''

@@ -1,5 +1,6 @@
 import base64
 import logging
+import os
 import pprint
 import json
 import re
@@ -46,14 +47,11 @@ class BaseSensor(object):
 
         self.config = Config()
         self.tmpdir = self.config.config['tmpdir']
+        os.makedirs(self.tmpdir, exist_ok=True)
         self.inputs = self.read_from_config('inputs', raise_=False)
         self.credentials = self.read_from_config('secrets', raise_=creds)
-        self.tmpdir = self.config.tmpdir
-
         self.captcha_image = join(self.tmpdir,
-                                  f"{self.name.split('/')[-1]}-captcha.jpg")
-
-        self.captcha_image = f'{self.tmpdir}/{basename(self.name)}.jpg'
+                                  self.get_qualified_name("captcha.jpg"))
 
     def read_from_config(self, type_, raise_=True):
         data = self.config.config[type_]
@@ -94,7 +92,7 @@ class BaseSensor(object):
 #        return self.request('post', url, **kwargs)
         if not url.startswith('http'):
             url = f'{self.base_url}/{url.lstrip("/")}'
-        logger.debug(f"POSTing to {url} with data: {kwargs} ..")
+        logger.debug(f"POSTing to {url} ..")
         self.response = self.session.post(url, **kwargs)
         logger.debug("Creating soup ..")
         self.soup = BeautifulSoup(self.response.text, self.parser)
@@ -102,19 +100,20 @@ class BaseSensor(object):
 
     def download_captcha(self, url):
         logger.info(f"Downloading captcha to {self.captcha_image}")
-        self.get(url)
-        image = self.soup.find(id='captcha_id')['src'].split('base64,')[1]
-        with open(self.captcha_image, 'wb') as ifd:
-            ifd.write(base64.b64decode(image))
+#        self.get(url)
+#        image = self.soup.find(id='captcha_id')['src'].split('base64,')[1]
+#        with open(self.captcha_image, 'wb') as ifd:
+#            ifd.write(base64.b64decode(image))
 
     def process_captcha(self, captcha):
-        captcha = re.sub(r'[^0-9]+$', '', captcha)
-        captcha = re.sub(r'^[^0-9]+', '', captcha)
-        match = re.match(r'^\d+\s*[/*+-]\d+$', captcha)
-        if not match:
-            raise CaptchaError(f"Unable to solve captcha: {captcha}")
-        result = eval(captcha)
-        return result
+        logger.info(f"Processing captcha {captcha}")
+#        captcha = re.sub(r'[^0-9]+$', '', captcha)
+#        captcha = re.sub(r'^[^0-9]+', '', captcha)
+#        match = re.match(r'^\d+\s*[/*+-]\d+$', captcha)
+#        if not match:
+#            raise CaptchaError(f"Unable to solve captcha: {captcha}")
+#        result = eval(captcha)
+#        return result
 
     @retry(CaptchaError, tries=3)
     def solve_captcha(self, url):
@@ -128,16 +127,22 @@ class BaseSensor(object):
         result = self.process_captcha(captcha)
         return result
 
-    def dump_html(self, filename):
+    def get_qualified_name(self, filename):
+        q_name = f"{self.name.replace('/', '-')}-{basename(filename)}"
         if not filename.startswith('/'):
-            filename = join(self.tmpdir, filename)
+            filename = join(self.tmpdir, q_name)
+        else:
+            filename = q_name
+        return filename
+
+    def dump_html(self, filename):
+        filename = self.get_qualified_name(filename)
         with open(filename, 'w') as hfd:
             logger.debug("Writing %s", filename)
             hfd.write(self.response.text)
 
     def read_html(self, filename):
-        if not filename.startswith('/'):
-            filename = join(self.tmpdir, filename)
+        filename = self.get_qualified_name(filename)
         with open(filename) as hfd:
             logger.debug("Reading %s", filename)
             html = hfd.read()
