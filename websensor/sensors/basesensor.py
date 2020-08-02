@@ -47,6 +47,8 @@ class BaseSensor(object):
 
         self.config = Config()
         self.tmpdir = self.config.config['tmpdir']
+        if self.tmpdir.split('/')[-1] != 'websensor':
+            self.tmpdir = join(self.tmpdir, 'websensor')
         os.makedirs(self.tmpdir, exist_ok=True)
         self.inputs = self.read_from_config('inputs', raise_=False)
         self.credentials = self.read_from_config('secrets', raise_=creds)

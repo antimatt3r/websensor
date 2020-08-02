@@ -9,15 +9,13 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt update
 RUN apt install -y \
     vim \
-    curl
-
-RUN apt install -y python3 python3-pip
+    curl \
+    python3 python3-pip \
+    tesseract-ocr
 
 COPY websensor requirements.txt /app/
 WORKDIR /app
 RUN pip3 install -r requirements.txt
-
-RUN apt install -y tesseract-ocr
 
 # VOLUME ["/config/websensor.rc", "/config/websensor.secrets"]
 

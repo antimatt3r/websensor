@@ -66,6 +66,8 @@ class NpsSensor(BaseSensor):
         image.save(self.captcha_image.replace('.jpg', '-edited.jpg'))
         captcha = pytesseract.image_to_string(image, config=custom_config)
         logger.debug(f"Found Captcha: {captcha}")
+        if not captcha.endswith("="):
+            raise CaptchaError("Did not seem to get the captcha right")
         result = self.process_captcha(captcha)
         return result
 
