@@ -30,12 +30,14 @@ def main(args) -> dict:
     output = {}
     headers = {
         'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
         'Connection': 'keep-alive',
         'Cache-Control': 'no-cache',
+        'Content-Type': 'application/x-www-form-urlencoded',
     }
     sensor = BescomSensor('utilities/bescom', headers=headers, base_url=URLS['base'], creds=True)
     sensor.get(URLS['login'])
+    sensor.dump_html('loginpage.html')
 
     view_state = sensor.soup.find(id='__VIEWSTATE')['value']
 #    view_state_generator = sensor.soup.find(id='__VIEWSTATEGENERATOR')['value']
@@ -54,10 +56,19 @@ def main(args) -> dict:
     }
 
     sensor.post(URLS['login'], data=data)
+    PP(sensor.session.headers)
+    PP(sensor.session.cookies)
+    sensor.dump_html('after-login.html')
 
     sensor.get(URLS['viewbill'])
-    PP(sensor.soup)
-    PP(sensor.response.status_code)
+    sensor.dump_html('bill.html')
+    sensor.get('/SCP/MyAccount/AccountDetails.aspx?AccountId=ACCOUNTID&RowIndex=1')
+    sensor.dump_html('details.html')
+
+    PP(sensor.session.headers)
+    PP(sensor.session.cookies)
+    sensor.get('/SCP/MyAccount/BillingHistory.aspx')
+    sensor.dump_html('billing-history.html')
     return outputs
 
 

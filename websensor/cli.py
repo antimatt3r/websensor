@@ -13,7 +13,8 @@ def init_logger():
     # Add the console handler
     handler_console = logging.StreamHandler()
     format_console = logging.Formatter(
-        basename(__file__) +": %(asctime)s: %(levelname)8s: %(message)s",
+        "%(asctime)s: %(levelname)8s: [%(filename)s:%(funcName)s:%(lineno)d]: "
+        "%(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
     )
     handler_console.setFormatter(format_console)

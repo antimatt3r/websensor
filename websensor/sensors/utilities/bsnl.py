@@ -58,12 +58,16 @@ def short(args) -> None:
     output = main(args)
     header = ["BSNL Number", "Name", "Status", "Due in (days)", "Amount Due", "Due Date"]
     table.set_cols_dtype(['t' for x in header])
-    status_map = { "SUCCESS": "PAID" }
+    def get_status(entry):
+        return "NOT PAID" \
+            if entry['BILL_STATUS'] == 'R' \
+               and entry['TOTAL_AMOUNT'] > 0 \
+            else "PAID"
     table.header(header)
     for row in output:
         name = row["CUSTOMER_NAME"].replace(".", " ").strip()
         table.add_row(
-            [str(row["PHONE_NO"]), name, status_map.get(row["STATUS"], "NOT PAID"),
+            [str(row["PHONE_NO"]), name, get_status(row),
              row["DUE_IN_DAYS"], row["TOTAL_AMOUNT"], row["DUE_DATE"]]
         )
     print(table.draw())
