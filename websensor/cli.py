@@ -2,9 +2,12 @@
 """Console script for websensor."""
 import argparse
 import importlib
+import json
 import logging
 import sys
-from os.path import basename
+from os.path import basename, dirname, join
+
+from utils.utils import drop_to_shell
 
 
 def init_logger():
@@ -31,13 +34,28 @@ def main():
         help='Run the short mode'
     )
     parser.add_argument(
+        '-g', '--generate-secrets-file',
+        action='store_true',
+        help='Generate an example secrets file'
+    )
+    parser.add_argument(
         '-l', '--log',
         action='store_true',
         help='Enable logger'
     )
-    parser.add_argument('sensor', help='Sensor to use')
-    parser.add_argument('args', nargs='*')
+    parser.add_argument('sensor', nargs='?', help='Sensor to use')
+    parser.add_argument('args', nargs='*', help='Args for the sensor')
     args = parser.parse_args()
+
+    if args.generate_secrets_file:
+        with open(join(dirname(__file__), 'websensor.secrets.example')) \
+            as secrets:
+            print(secrets.read())
+            return(0)
+    elif not args.sensor:
+        parser.print_usage()
+        print("Provide a sensor")
+        return(0)
 
     args.sensor = args.sensor.replace("/", ".")
 

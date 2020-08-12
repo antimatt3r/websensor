@@ -4,16 +4,27 @@ import os
 import shutil
 import tempfile
 
+
 logger = logging.getLogger(__name__)
+
+
+class ConfigError(Exception):
+    pass
+
+
 def get_config():
     websensorrc = os.environ.get('WEBSENSORRC',
                                  os.path.expanduser('~/.websensorrc'))
+    logger.info("Reading RC file: %s", websensorrc)
     try:
         with open(websensorrc) as rcfd:
             config = json.load(rcfd)
         return config
     except IOError:
-        raise Exception(f"Cannot read rc file: {websensorrc}")
+        raise ConfigError(f"Cannot read RC file: {websensorrc}")
+    except json.decoder.JSONDecodeError as error:
+        logger.error("Error parsing RC file: %s", error)
+        raise ConfigError(error)
 
 
 def get_secrets(config):
@@ -25,9 +36,9 @@ def get_secrets(config):
 
 class Config(object):
     def __init__(self):
+        self.tmpdir_created = False
         self.config = get_config()
         self.secrets = get_secrets(self.config)
-        self.tmpdir_created = False
         self.tmpdir = self.create_temp_dir()
 
     def create_temp_dir(self):

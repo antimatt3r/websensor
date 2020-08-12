@@ -1,5 +1,7 @@
+import inspect
 import os
 import re
+import code
 from collections import OrderedDict
 
 import requests
@@ -9,20 +11,30 @@ logger = logging.getLogger()
 
 
 def drop_to_shell():
-    import code
+    vars = {}
+    vars.update(globals())
+    try:
+        frame = inspect.currentframe()
+        locals = frame.f_back.f_locals
+        vars.update(locals)
+    except Exception:
+        pass
     try:
         import readline
         import rlcompleter
         historyPath = os.path.expanduser("~/.pyhistory")
         if os.path.exists(historyPath):
-                readline.read_history_file(historyPath)
+            readline.read_history_file(historyPath)
         readline.parse_and_bind('tab: complete')
-    except:
+        readline.set_completer(rlcompleter.Completer(vars).complete)
+    except Exception:
         pass
-    code.interact(local=dict(globals(), **locals()))
+    code.interact(local=vars)
+
 
 def clean_text(text):
     return re.sub(r'\s+', ' ', text).strip()
+
 
 def list_of_lists_to_dict(data, key):
     headers = data.pop(0)
@@ -34,6 +46,7 @@ def list_of_lists_to_dict(data, key):
     for row in data:
         dict_.update({row[index_key]: dict(zip(headers, row))})
     return dict_
+
 
 def convert_currency(amount, from_, to, date='latest'):
     rates = requests.get(f'https://api.exchangeratesapi.io/{date}').json()
