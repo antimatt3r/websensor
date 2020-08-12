@@ -7,20 +7,29 @@ LABEL description="This is Docker Image for websensor project"
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt update
-RUN apt install -y \
-    vim \
-    curl \
-    python3 python3-pip \
-    tesseract-ocr
+RUN apt install --no-install-recommends -y \
+    vim curl \
+    cmake \
+    tesseract-ocr \
+    ca-certificates \
+    python3.8 python3.8-distutils \
+    python3-opencv python3-dev libffi-dev libjpeg-dev zlib1g-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+RUN python3.8 get-pip.py
+
+RUN apt update && apt install --install-recommends -y gcc && rm -rf /var/lib/apt/lists/*
 
 COPY websensor requirements.txt /app/
 WORKDIR /app
-RUN pip3 install -r requirements.txt
+RUN pip install -r requirements.txt
 
-# VOLUME ["/config/websensor.rc", "/config/websensor.secrets"]
+# VOLUME ["/config/websensor.secrets"]
 
 ENV WEBSENSORRC /config/websensor.rc
+COPY websensor.rc /config/
 RUN mkdir /tmp/websensor
 
-ENTRYPOINT ["python3", "/app/cli.py"]
+ENTRYPOINT ["python3.8", "/app/cli.py"]
 CMD ["--help"]

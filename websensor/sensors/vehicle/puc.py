@@ -56,8 +56,6 @@ def get_table(tables):
 
 def main(args) -> dict:
     """ Execute the command.
-
-    :param name: name to use in greeting
     """
     output = {}
     headers = {
@@ -66,7 +64,7 @@ def main(args) -> dict:
         'Connection': 'keep-alive',
         'Cache-Control': 'no-cache',
     }
-    sensor = PucSensor('vehicle/puc', headers=headers, base_url=URLS['base'], creds=False)
+    sensor = PucSensor('vehicle/puc', headers=headers, base_url=URLS['base'], creds=True)
 
     url = '/ReportingUser/Scgr1.aspx'
     sensor.get(url)
@@ -76,7 +74,7 @@ def main(args) -> dict:
     event_validation = sensor.soup.find(id='__EVENTVALIDATION')['value']
 
     vehicles = []
-    input_vehicles = args.args if args.args else sensor.inputs["vehicles"]
+    input_vehicles = args.args if args.args else sensor.credentials["vehicles"]
     for vehicle in input_vehicles:
         if '/' in vehicle:
             vehicles.append(vehicle.split('/'))

@@ -1,0 +1,4 @@
+{
+    "secrets": "/config/websensor.secrets",
+    "tmpdir": "/tmp/websensor",
+}
