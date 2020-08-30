@@ -67,7 +67,15 @@ class NpsSensor(BaseSensor):
         captcha = pytesseract.image_to_string(image, config=custom_config)
         logger.debug(f"Found Captcha: {captcha}")
         if not captcha.endswith("="):
-            raise CaptchaError("Did not seem to get the captcha right")
+            match = re.match(r'^(\d+[^\d]\d)\d?$', captcha)
+            if match:
+                logger.info("Captcha does not end with '=', trying to skip"
+                            "the last digit")
+                captcha = match.groups()[0]
+            else:
+                raise CaptchaError(
+                    "Did not seem to get the captcha right ({})".format(
+                        captcha))
         result = self.process_captcha(captcha)
         return result
 
@@ -111,15 +119,19 @@ def main(args) -> dict:
         }
         # Lets login
         sensor.post(url=login_url, data=data)
+        if "Your Password has expired." in sensor.response.text:
+            raise LoginError("The Password has expired")
+        sensor.dump_html('login-out.html')
         if sensor.soup.find('div', {'class': 'login-tab'}):
-            sensor.dump_html('login-error.html')
+#            sensor.dump_html('login-error.html')
     #        if 'Please enter correct captcha code' in sensor.response.text:
             raise CaptchaError("Captcha was not validated")
+        logger.info("Success!!")
 
     logger.info("Logging in now ..")
     login()
     if not "Welcome Subscriber" in sensor.soup.text:
- #       sensor.dump_html("login-error.html")
+        sensor.dump_html("login-error.html")
         raise LoginError(f"Login did not work")
  #   sensor.dump_html('login-success.html')
     id = sensor.get_id()
@@ -190,30 +202,3 @@ def short(args) -> None:
                scheme_data['Amount (Rs.)'].replace(',', '')]
         table.add_row(row)
     print(table.draw())
-#    out = main(args)
-
-'''
-curl 'https://cra-nsdl.com/CRA/LogonPwd.do;jsessionid=DB1D999CFF9FE59E0670338DEA4E4728.Ghi456' \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -H 'Cookie: JSESSIONID=DB1D999CFF9FE59E0670338DEA4E4728.Ghi456; cra-nsdl_cookie=2718091530.47873.0000' \
-  --data-raw 'userID=XX&password=YY&subCaptchaVal=43' \
-  --compressed
-'''
-
-'''
-curl 'https://cra-nsdl.com/CRA/SOTViewOnload.do?ID=1575258027&getName=SOT%20CG-SG%20Transaction%20Details' \
-  -H 'Cookie: JSESSIONID=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; RandomNumber=223674552; sessionid=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; cra-nsdl_cookie=906152202.47873.0000' \
-  --compressed
-'''
-
-'''
-curl 'https://cra-nsdl.com/CRA/SOTViewDtls.do?ID=-1282619975&getName=SOT%20CG-SG%20Transaction%20Details' \
-  -H 'Cookie: JSESSIONID=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; sessionid=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; RandomNumber=-1893656046; cra-nsdl_cookie=906152202.47873.0000' \
-  --compressed
-'''
-
-'''
-curl 'https://cra-nsdl.com/CRA/Log-Off.do?ID=-1282619975&getName=Log-Off' \
-  -H 'Cookie: JSESSIONID=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; sessionid=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; RandomNumber=-1893656046; cra-nsdl_cookie=906152202.47873.0000' \
-  --compressed
-'''

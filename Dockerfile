@@ -31,5 +31,7 @@ ENV WEBSENSORRC /config/websensor.rc
 COPY websensor.rc /config/
 RUN mkdir /tmp/websensor
 
+ENV PYTHONIOENCODING UTF-8
+
 ENTRYPOINT ["python3.8", "/app/cli.py"]
 CMD ["--help"]

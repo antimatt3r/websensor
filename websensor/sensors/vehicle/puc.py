@@ -74,7 +74,7 @@ def main(args) -> dict:
     event_validation = sensor.soup.find(id='__EVENTVALIDATION')['value']
 
     vehicles = []
-    input_vehicles = args.args if args.args else sensor.credentials["vehicles"]
+    input_vehicles = args if args else sensor.credentials["vehicles"]
     for vehicle in input_vehicles:
         if '/' in vehicle:
             vehicles.append(vehicle.split('/'))
