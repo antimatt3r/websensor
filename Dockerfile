@@ -6,8 +6,7 @@ LABEL description="This is Docker Image for websensor project"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt update
-RUN apt install --no-install-recommends -y \
+RUN apt update && apt install --no-install-recommends -y \
     vim curl \
     cmake \
     tesseract-ocr \
