@@ -81,5 +81,14 @@ dist: clean ## builds source and wheel package
 	python setup.py bdist_wheel
 	ls -l dist
 
+docker:
+	docker buildx ls
+	docker buildx create --name builder
+	docker buildx use builder
+	docker buildx ls
+	docker buildx inspect --bootstrap
+	docker login
+	docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t antimatt3r/websensor --push .
+
 install: clean ## install the package to the active Python's site-packages
 	python setup.py install
