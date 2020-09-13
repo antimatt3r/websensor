@@ -24,52 +24,43 @@ logger = logging.getLogger(__name__)
 
 PP = pprint.PrettyPrinter(indent=4).pprint
 
+'''
+curl 'https://www.bwssb.gov.in/login.php' \
+  -H 'Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryvgqFkBjlcbgD0lQT' \
+  -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9' \
+  --data-binary $'------WebKitFormBoundaryvgqFkBjlcbgD0lQT\r\nContent-Disposition: form-data; name="csrf"\r\n\r\n\r\n------WebKitFormBoundaryvgqFkBjlcbgD0lQT\r\nContent-Disposition: form-data; name="rr_number"\r\n\r\nRRNUMBER\r\n------WebKitFormBoundaryvgqFkBjlcbgD0lQT\r\nContent-Disposition: form-data; name="rr_number_pass"\r\n\r\nPASSWORD\r\n------WebKitFormBoundaryvgqFkBjlcbgD0lQT\r\nContent-Disposition: form-data; name="captcha"\r\n\r\n772ea\r\n------WebKitFormBoundaryvgqFkBjlcbgD0lQT\r\nContent-Disposition: form-data; name="login"\r\n\r\nLogin\r\n------WebKitFormBoundaryvgqFkBjlcbgD0lQT--\r\n' \
+'''
+
 URLS = {
-    'base': 'https://cra-nsdl.com/',
-    'captcha': '/CRA/',
-    'login': '/CRA/LogonPwd.do',
+    'base': 'https://www.bwssb.gov.in',
+    'captcha': '/captcha.php',
+    'login': '/login',
+    'login_post': '/login.php',
     'logoff': '/CRA/'
 }
-TEXT_MAPPING = {
-    'TOTAL EE BALANCE': 'Employee',
-    'TOTAL ER BALANCE': 'Employer',
-    'TOTAL BALANCE (as on date)': 'Total',
-}
 
 
-class NpsSensor(BaseSensor):
+class BwssbSensor(BaseSensor):
     def download_captcha(self, url):
-        self.captcha_image = os.environ['HOME'] + '/tmp/nps.jpg'
         logger.info(f"Downloading captcha to {self.captcha_image}")
-        self.get(url)
-        image = self.soup.find(id='captcha').img['src'].split('base64,')[1]
+        self.get(url, verify=False)
         with open(self.captcha_image, 'wb') as ifd:
-            ifd.write(base64.b64decode(image))
+            ifd.write(self.response.content)
 
-    def process_captcha(self, captcha):
-        captcha = re.sub(r'[^0-9]+$', '', captcha)
-        captcha = re.sub(r'^[^0-9]+', '', captcha)
-        captcha.replace('=', '')
-        match = re.match(r'^\d+\s*[/*+-]\d+$', captcha)
-        if not match:
-            raise CaptchaError(f"Unable to solve captcha: {captcha}")
-        result = eval(captcha)
-        logger.debug(f"Solved captcha = {result}")
-        return result
-
-    @retry(CaptchaError, tries=3)
-    def solve_captcha(self, url):
-        self.download_captcha(url)
-
-        custom_config = r'--oem 3 --psm 6 -c ' \
-                        r'tessedit_char_whitelist=0123456789+-='
+    @retry(CaptchaError, tries=1)
+    def solve_captcha(self):
+        custom_config = r'--oem 3 --psm 7 -c ' \
+            r'tessedit_char_whitelist=0123456789' \
+            r'abcdefghijklmnopqrstuvwxyz' \
+            r'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         image = Image.open(self.captcha_image).convert('L')
         image = image.filter(ImageFilter.MedianFilter())
-        image = image.point(lambda x: 0 if x < 140 else 255)
+        image = image.point(lambda x: 0 if x > 250 else 255)
+        #image = image.invert()
+        image.save(self.captcha_image.replace('.jpg', '-1.jpg'))
         captcha = pytesseract.image_to_string(image, config=custom_config)
         logger.debug(f"Found Captcha: {captcha}")
-        result = self.process_captcha(captcha)
-        return result
+        return captcha
 
     def get_id(self):
         if "Please enter correct captcha code" in self.response.text:
@@ -86,45 +77,6 @@ class NpsSensor(BaseSensor):
         return match.groups()[0]
 
 
-'''
-curl 'https://cra-nsdl.com/CRA/LogonPwd.do;jsessionid=DB1D999CFF9FE59E0670338DEA4E4728.Ghi456' \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -H 'Cookie: JSESSIONID=DB1D999CFF9FE59E0670338DEA4E4728.Ghi456; cra-nsdl_cookie=2718091530.47873.0000' \
-  --data-raw 'userID=XX&password=YY&subCaptchaVal=43' \
-  --compressed
-'''
-
-'''
-curl 'https://cra-nsdl.com/CRA/SOTViewOnload.do?ID=1575258027&getName=SOT%20CG-SG%20Transaction%20Details' \
-  -H 'Cookie: JSESSIONID=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; RandomNumber=223674552; sessionid=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; cra-nsdl_cookie=906152202.47873.0000' \
-  --compressed
-'''
-
-'''
-curl 'https://cra-nsdl.com/CRA/SOTViewDtls.do?ID=-1282619975&getName=SOT%20CG-SG%20Transaction%20Details' \
-  -H 'Cookie: JSESSIONID=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; sessionid=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; RandomNumber=-1893656046; cra-nsdl_cookie=906152202.47873.0000' \
-  --compressed
-'''
-
-'''
-curl 'https://cra-nsdl.com/CRA/Log-Off.do?ID=-1282619975&getName=Log-Off' \
-  -H 'Cookie: JSESSIONID=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; sessionid=BE8E470DEA669B26AE5E2809B14C9E3A.Abc123; RandomNumber=-1893656046; cra-nsdl_cookie=906152202.47873.0000' \
-  --compressed
-'''
-
-def drop_to_shell(vars):
-    import code
-    try:
-        import readline
-        import rlcompleter
-        historyPath = os.path.expanduser("~/.pyhistory")
-        if os.path.exists(historyPath):
-                readline.read_history_file(historyPath)
-        readline.parse_and_bind('tab: complete')
-    except:
-        pass
-    code.interact(vars)
-
 def main(args) -> dict:
     """ Execute the command.
 
@@ -137,18 +89,12 @@ def main(args) -> dict:
         'Content-Type': 'application/x-www-form-urlencoded',
         'Referer': 'https://cra-nsdl.com/CRA/',
     }
-    drop_to_shell(dict(globals(), **locals()))
-    sdfj
-    sensor = NpsSensor('finance/nps', URLS['base'], headers=headers,
-                       creds=True)
-
-    @retry(CaptchaError, tries=1)
-    def solve_captcha():
-        captcha = sensor.solve_captcha(URLS['login'])
-        if captcha > 100:
-            logger.info(f"Suspecting the solved captcha ({captcha})")
-            raise CaptchaError
-        return captcha
+    sensor = BwssbSensor('finance/bwssb', URLS['base'], headers=headers, creds=True)
+#    sensor.get(URLS['login'], verify=False)
+#    sensor.get(URLS['captcha'])
+#    sensor.download_captcha(URLS['captcha'])
+    sensor.solve_captcha()
+    done
 
     @retry(CaptchaError, tries=3)
     def login():

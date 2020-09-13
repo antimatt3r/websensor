@@ -7,6 +7,9 @@ import re
 from os.path import basename, join
 
 import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 from bs4 import BeautifulSoup
 from pytesseract import pytesseract
 from retry import retry
@@ -19,7 +22,8 @@ except ImportError:
     import Image
 
 logger = logging.getLogger(__name__)
-PP = pprint.PrettyPrinter(indent=4).pprint
+logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 class NoCredsError(Exception):

@@ -82,6 +82,7 @@ dist: clean ## builds source and wheel package
 	ls -l dist
 
 docker:
+	docker buildx rm builder
 	docker buildx ls
 	docker buildx create --name builder
 	docker buildx use builder

@@ -32,5 +32,10 @@ RUN mkdir /tmp/websensor
 
 ENV PYTHONIOENCODING UTF-8
 
-ENTRYPOINT ["python3.8", "/app/cli.py"]
-CMD ["--help"]
+# ENTRYPOINT ["python3.8", "/app/cli.py"]
+# CMD ["--help"]
+
+WORKDIR /app
+
+EXPOSE 8080
+CMD ["gunicorn", "-c", "/app/gunicorn_config.py", "wsgi:app"]
