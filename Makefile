@@ -22,6 +22,8 @@ endef
 export PRINT_HELP_PYSCRIPT
 
 BROWSER := python -c "$$BROWSER_PYSCRIPT"
+DOCKER_CLI_EXPERIMENTAL := enabled
+export DOCKER_CLI_EXPERIMENTAL
 
 help:
 	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
@@ -82,14 +84,18 @@ dist: clean ## builds source and wheel package
 	ls -l dist
 
 docker:
-	docker buildx rm builder
+	docker login
+	docker build -t antimatt3r/websensor .
+	docker push antimatt3r/websensor
+dockerx:
+	docker buildx rm builder || true
 	docker buildx ls
 	docker buildx create --name builder
 	docker buildx use builder
 	docker buildx ls
 	docker buildx inspect --bootstrap
 	docker login
-	docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t antimatt3r/websensor --push .
+	docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t antimatt3r/websensor:latest --push .
 
 install: clean ## install the package to the active Python's site-packages
 	python setup.py install
