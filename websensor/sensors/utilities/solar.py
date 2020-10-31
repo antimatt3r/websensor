@@ -70,7 +70,6 @@ def main(args) -> dict:
         nonzero_numbers = numbers.copy()
         while nonzero_numbers[-1] == 0:
             nonzero_numbers.pop()
-        print(nonzero_numbers)
 
         def average(list_):
             return sum(list_)/len(list_) if list_ else 0
@@ -79,21 +78,20 @@ def main(args) -> dict:
             'total': sum, 'min': min, 'max': max, 'average': average
         }
         return {
-            prefix + "_" + param: funcs[param](nonzero_numbers)
+            prefix + "_" + param: round(funcs[param](nonzero_numbers), 2)
             for param in funcs
         }
 
     def get_user_defined(start, end, prefix):
-        PP((start, end))
         if isinstance(start, datetime.datetime):
             start = start.strftime('%m/%d/%Y')
         if isinstance(end, datetime.datetime):
             end = end.strftime('%m/%d/%Y')
         payload = {
-            "ids":api.system_id,
-            "sns":"",
-            "range":4,"type":2,
-            "start":start,"end":end
+            "ids": api.system_id,
+            "sns": "",
+            "range": 4, "type": 2,
+            "start": start, "end": end
         }
         out = api.call('v1/Statistics/GetStatisticsCharts_Sn', payload)
         return get_statistics([x['y'] for x in out[0]['yield']], prefix)
@@ -125,7 +123,9 @@ def main(args) -> dict:
     output.update(get_user_defined(first_of_last_month,
                                    end_of_last_month,
                                    'last_month'))
-    output.update(get_user_defined(first_of_this_month, today, 'this_month'))
+    output.update(get_user_defined(first_of_this_month,
+                                   today,
+                                   'this_month'))
 
     output['today'] = api.data['kpi']['power']
     output['total'] = api.data['kpi']['total_power']

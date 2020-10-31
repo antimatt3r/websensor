@@ -25,6 +25,10 @@ BROWSER := python -c "$$BROWSER_PYSCRIPT"
 DOCKER_CLI_EXPERIMENTAL := enabled
 export DOCKER_CLI_EXPERIMENTAL
 
+
+ARCH := $(shell sh -c "uname -m | sed 's/aarch64/arm64/; s/armv7l/arm\/v7/; s/x86_64/amd64/'")
+export ARCH
+
 help:
 	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
@@ -85,8 +89,8 @@ dist: clean ## builds source and wheel package
 
 docker:
 	docker login
-	docker build -t antimatt3r/websensor .
-	docker push antimatt3r/websensor
+	docker build -t antimatt3r/websensor:$(ARCH) .
+	docker push antimatt3r/websensor:$(ARCH)
 dockerx:
 	docker buildx rm builder || true
 	docker buildx ls
